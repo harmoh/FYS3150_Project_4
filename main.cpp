@@ -17,6 +17,7 @@ int pbc(int i, int limit, int add)
 // Main program
 int main(int argc, char *argv[])
 {
+    // Initialize RNG, can be called by rand(gen) to get a random number between 0 and 1
     random_device rd;
     mt19937_64 gen(rd());
     uniform_real_distribution<double> rand(0.0,1.0);
@@ -25,7 +26,7 @@ int main(int argc, char *argv[])
     mat spinMatrix = zeros<mat>(nSpins,nSpins);
     double energy = 0.0;
     double magneticMoment = 0.0;
-    double temperature = 1.0;
+    double temp = 1.0;
 
     initializeLattice(nSpins, spinMatrix, energy, magneticMoment);
 
@@ -35,21 +36,23 @@ int main(int argc, char *argv[])
     vec energyDifference = zeros<mat>(17);
     for(int dE = -8; dE <= 8; dE += 4)
     {
-        energyDifference(dE + 8) = exp(-dE/temperature);
+        energyDifference(dE + 8) = exp(-dE/temp);
+        cout << "exp(-dE/temperature) = " << exp(-dE/temp) << "\tfor dE = " << dE << endl;
     }
-
     //cout << "Energy difference:\n" << energyDifference << endl;
 
+    vec expectationValues = zeros<mat>(5);
+
     // Monte Carlo cycles
-    int mcCycles = 0;
+    int mcCycles = 1000000;
     bool final = false;
-    //for(int i = 0; i < mcCycles; i++)
-    while(!final)
+    for(int i = 0; i < mcCycles; i++)
+    //while(!final)
     {
         // Sweep over the lattice
-        for(int y = 0; y < nSpins; y++)
+        for(int x = 0; x < nSpins; x++)
         {
-            for(int x = 0; x < nSpins; x++)
+            for(int y = 0; y < nSpins; y++)
             {
                 int ix = (int) (rand(gen) * (double) nSpins);
                 int iy = (int) (rand(gen) * (double) nSpins);
@@ -61,17 +64,36 @@ int main(int argc, char *argv[])
                     spinMatrix(ix,iy) *= -1.0;
                     magneticMoment += (double) 2 * spinMatrix(ix,iy);
                     energy += (double) deltaE;
-                    cout << "DeltaE: " << deltaE << "\t Energy: " << energy << endl;
+                    //cout << "DeltaE: " << deltaE << "\t Energy: " << energy << endl;
                 }
             }
         }
+
+        expectationValues(0) += energy;
+        expectationValues(1) += energy * energy;
+        expectationValues(2) += magneticMoment;
+        expectationValues(3) += magneticMoment * magneticMoment;
+        expectationValues(4) += fabs(magneticMoment);
+
         if(magneticMoment == -4) final = true;
-        mcCycles++;
+        //mcCycles++;
     }
 
     cout << "Energy: " << energy << endl;
     cout << "Magnetic moment: " << magneticMoment << endl;
     cout << "MC cycles: " << mcCycles << endl;
+
+    double norm = 1.0/mcCycles;
+    double E_ExpectationValues = expectationValues(0)*norm;
+    double E2_ExpectationValues = expectationValues(1)*norm;
+    double M_ExpectationValues = expectationValues(2)*norm;
+    double M2_ExpectationValues = expectationValues(3)*norm;
+    double Mabs_ExpectationValues = expectationValues(4)*norm;
+
+    cout << "Expectation values:\nEnergy: " << E_ExpectationValues/nSpins/nSpins << "\nEnergy^2: " <<
+            E2_ExpectationValues << "\nMagnetic moment: " << M_ExpectationValues/nSpins/nSpins <<
+            "\nMagnetic moment^2: " << M2_ExpectationValues << "\n|Magnetic moment|: " <<
+            Mabs_ExpectationValues << endl;
 
     return 0;
 }
