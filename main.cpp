@@ -1,12 +1,14 @@
 #include <random>
 #include <iostream>
 #include <armadillo>
+#include <time.h>
 
 using namespace std;
 using namespace arma;
 
 // Declare functions
 void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magneticMoment);
+void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues);
 
 // Periodic boundary conditions
 int pbc(int i, int limit, int add)
@@ -17,21 +19,61 @@ int pbc(int i, int limit, int add)
 // Main program
 int main(int argc, char *argv[])
 {
+    int nSpins = 2;
+    double temp = 1.0;
+
+    //cout << "Energy: " << energy << endl;
+    //cout << "Magnetic moment: " << magneticMoment << endl;
+
+    //cout << "Energy difference:\n" << energyDifference << endl;
+
+    vec expectationValues = zeros<mat>(5);
+
+    // Monte Carlo cycles
+    int mcCycles = atoi(argv[1]);
+    clock_t time_initial = clock();
+    metropolis(nSpins, mcCycles, temp, expectationValues);
+    clock_t time_final = clock();
+    double elapsed_time = (time_final - time_initial) / (double) CLOCKS_PER_SEC;
+
+    cout << "Time: " << elapsed_time << " seconds." << endl;
+
+    return 0;
+}
+
+void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magneticMoment)
+{
+    // Set ground state of the lattice and magnetic moment
+    for(int y = 0; y < nSpins; y++)
+    {
+        for(int x = 0; x < nSpins; x++)
+        {
+            spinMatrix(x,y) = 1.0;
+            magneticMoment += (double) spinMatrix(x,y);
+        }
+    }
+
+    // Set up energy
+    for(int y = 0; y < nSpins; y++)
+    {
+        for(int x = 0; x < nSpins; x++)
+        {
+            energy -= spinMatrix(x,y)*(spinMatrix(pbc(x,nSpins,-1),y) + spinMatrix(x,pbc(y,nSpins,-1)));
+        }
+    }
+}
+
+void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues)
+{
     // Initialize RNG, can be called by rand(gen) to get a random number between 0 and 1
     random_device rd;
     mt19937_64 gen(rd());
     uniform_real_distribution<double> rand(0.0,1.0);
 
-    int nSpins = 2;
-    mat spinMatrix = zeros<mat>(nSpins,nSpins);
     double energy = 0.0;
     double magneticMoment = 0.0;
-    double temp = 1.0;
-
+    mat spinMatrix = zeros<mat>(nSpins,nSpins);
     initializeLattice(nSpins, spinMatrix, energy, magneticMoment);
-
-    cout << "Energy: " << energy << endl;
-    cout << "Magnetic moment: " << magneticMoment << endl;
 
     vec energyDifference = zeros<mat>(17);
     for(int dE = -8; dE <= 8; dE += 4)
@@ -39,13 +81,7 @@ int main(int argc, char *argv[])
         energyDifference(dE + 8) = exp(-dE/temp);
         cout << "exp(-dE/temperature) = " << exp(-dE/temp) << "\tfor dE = " << dE << endl;
     }
-    //cout << "Energy difference:\n" << energyDifference << endl;
 
-    vec expectationValues = zeros<mat>(5);
-
-    // Monte Carlo cycles
-    int mcCycles = 1000000;
-    bool final = false;
     for(int i = 0; i < mcCycles; i++)
     //while(!final)
     {
@@ -75,7 +111,7 @@ int main(int argc, char *argv[])
         expectationValues(3) += magneticMoment * magneticMoment;
         expectationValues(4) += fabs(magneticMoment);
 
-        if(magneticMoment == -4) final = true;
+        //if(magneticMoment == -4) final = true;
         //mcCycles++;
     }
 
@@ -94,28 +130,4 @@ int main(int argc, char *argv[])
             E2_ExpectationValues << "\nMagnetic moment: " << M_ExpectationValues/nSpins/nSpins <<
             "\nMagnetic moment^2: " << M2_ExpectationValues << "\n|Magnetic moment|: " <<
             Mabs_ExpectationValues << endl;
-
-    return 0;
-}
-
-void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magneticMoment)
-{
-    // Set ground state of the lattice and magnetic moment
-    for(int y = 0; y < nSpins; y++)
-    {
-        for(int x = 0; x < nSpins; x++)
-        {
-            spinMatrix(x,y) = 1.0;
-            magneticMoment += (double) spinMatrix(x,y);
-        }
-    }
-
-    // Set up energy
-    for(int y = 0; y < nSpins; y++)
-    {
-        for(int x = 0; x < nSpins; x++)
-        {
-            energy -= spinMatrix(x,y)*(spinMatrix(pbc(x,nSpins,-1),y) + spinMatrix(x,pbc(y,nSpins,-1)));
-        }
-    }
 }
