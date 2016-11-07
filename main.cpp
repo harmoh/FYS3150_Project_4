@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 
     //cout << "Energy difference:\n" << energyDifference << endl;
 
-    vec expectationValues = zeros<mat>(5);
+    vec expectationValues = zeros<mat>(6);
 
     // Monte Carlo cycles
     int mcCycles = atoi(argv[1]);
@@ -79,7 +79,7 @@ void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues)
     for(int dE = -8; dE <= 8; dE += 4)
     {
         energyDifference(dE + 8) = exp(-dE/temp);
-        cout << "exp(-dE/temperature) = " << exp(-dE/temp) << "\tfor dE = " << dE << endl;
+        //cout << "exp(-dE/temperature) = " << exp(-dE/temp) << "\tfor dE = " << dE << endl;
     }
 
     for(int i = 0; i < mcCycles; i++)
@@ -107,9 +107,10 @@ void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues)
 
         expectationValues(0) += energy;
         expectationValues(1) += energy * energy;
-        expectationValues(2) += magneticMoment;
-        expectationValues(3) += magneticMoment * magneticMoment;
-        expectationValues(4) += fabs(magneticMoment);
+        expectationValues(2) += fabs(energy);
+        expectationValues(3) += magneticMoment;
+        expectationValues(4) += magneticMoment * magneticMoment;
+        expectationValues(5) += fabs(magneticMoment);
 
         //if(magneticMoment == -4) final = true;
         //mcCycles++;
@@ -120,14 +121,23 @@ void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues)
     cout << "MC cycles: " << mcCycles << endl;
 
     double norm = 1.0/mcCycles;
-    double E_ExpectationValues = expectationValues(0)*norm;
-    double E2_ExpectationValues = expectationValues(1)*norm;
-    double M_ExpectationValues = expectationValues(2)*norm;
-    double M2_ExpectationValues = expectationValues(3)*norm;
-    double Mabs_ExpectationValues = expectationValues(4)*norm;
+    double expectationValues_E = expectationValues(0)*norm;// / nSpins / nSpins;
+    double expectationValues_E2 = expectationValues(1)*norm;
+    double expectationValues_Eabs = expectationValues(2)*norm;
+    double expectationValues_M = expectationValues(3)*norm;// / nSpins / nSpins;
+    double expectationValues_M2 = expectationValues(4)*norm;// / nSpins / nSpins;
+    double expectationValues_Mabs = expectationValues(5)*norm;
 
-    cout << "Expectation values:\nEnergy: " << E_ExpectationValues/nSpins/nSpins << "\nEnergy^2: " <<
-            E2_ExpectationValues << "\nMagnetic moment: " << M_ExpectationValues/nSpins/nSpins <<
-            "\nMagnetic moment^2: " << M2_ExpectationValues << "\n|Magnetic moment|: " <<
-            Mabs_ExpectationValues << endl;
+    double expectationValues_Cv = (expectationValues_E2 - expectationValues_Eabs * expectationValues_Eabs) / (nSpins*nSpins * temp);
+    double expectationValues_X = (expectationValues_M2 - expectationValues_Mabs * expectationValues_Mabs) / (nSpins*nSpins * temp);
+
+    cout << "Expectation values:\nEnergy: " << expectationValues_E << endl;
+    cout << "Energy^2: " << expectationValues_E2 << endl;
+    cout << "|Energy|: " << expectationValues_Eabs << endl;
+    cout << "Magnetic moment: " << expectationValues_M << endl;
+    cout << "Magnetic moment^2: " << expectationValues_M2 << endl;
+    cout << "|Magnetic moment|: " << expectationValues_Mabs << endl;
+
+    cout << "Heat capacity: " << expectationValues_Cv << endl;
+    cout << "Susceptibility: " << expectationValues_X << endl;
 }
