@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     clock_t time_final = clock();
     double elapsed_time = (time_final - time_initial) / (double) CLOCKS_PER_SEC;
 
-    cout << "Time: " << elapsed_time << " seconds." << endl;
+    cout << "\nTime: " << elapsed_time << " seconds." << endl;
 
     return 0;
 }
@@ -122,6 +122,7 @@ void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues)
 
     // Numerical values
     double norm = 1.0/mcCycles;
+    double normSpins = 1.0 / nSpins / nSpins;
     double expectVal_E = expectationValues(0)*norm;// / nSpins / nSpins;
     double expectVal_E2 = expectationValues(1)*norm;
     double expectVal_Eabs = expectationValues(2)*norm;
@@ -129,15 +130,16 @@ void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues)
     double expectVal_M2 = expectationValues(4)*norm;// / nSpins / nSpins;
     double expectVal_Mabs = expectationValues(5)*norm;
 
-    double expectVal_Cv = (expectVal_E2 - expectVal_Eabs * expectVal_Eabs) / (nSpins*nSpins * temp);
-    double expectVal_X = (expectVal_M2 - expectVal_Mabs * expectVal_Mabs) / (nSpins*nSpins * temp);
+    double expectVal_Cv = (expectVal_E2 - expectVal_Eabs * expectVal_Eabs) * normSpins / temp;
+    double expectVal_X = (expectVal_M2 - expectVal_Mabs * expectVal_Mabs) * normSpins / temp;
 
-    cout << "\nExpectation values, numerical:\nEnergy: " << expectVal_E << endl;
+    cout << "\nExpectation values, numerical: " << endl;
+    //cout << "Energy: " << expectVal_E << endl;
     //cout << "Energy^2: " << expectationValues_E2 << endl;
-    cout << "|Energy|: " << expectVal_Eabs << endl;
-    cout << "Magnetic moment: " << expectVal_M << endl;
+    //cout << "|Energy|: " << expectVal_Eabs << endl;
+    //cout << "Magnetic moment: " << expectVal_M << endl;
     //cout << "Magnetic moment^2: " << expectationValues_M2 << endl;
-    cout << "|Magnetic moment|: " << expectVal_Mabs << endl;
+    //cout << "|Magnetic moment|: " << expectVal_Mabs << endl;
 
     cout << "Heat capacity: " << expectVal_Cv << endl;
     cout << "Susceptibility: " << expectVal_X << endl;
@@ -151,12 +153,13 @@ void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues)
     double expectValAnalytical_M2 = (32*exp(8*J*beta) + 32) / Z;
     double expectValAnalytical_Mabs = (8*exp(8*J*beta) + 16) / Z;
     double expectValAnalytical_Cv = ((256*J*cosh(8*J*beta)) / Z - expectValAnalytical_E *
-                                     expectValAnalytical_E) / (kbTemp * nSpins * nSpins);
+                                     expectValAnalytical_E) * normSpins / kbTemp;
     double expectValAnalytical_X = (expectValAnalytical_M2 - expectValAnalytical_Mabs *
-                                    expectValAnalytical_Mabs) / (kbTemp * nSpins * nSpins);
+                                    expectValAnalytical_Mabs) * normSpins / kbTemp;
     //double Achi = 8*(exp(8.0/temp) + cosh(8.0/temp) + 3.0/2.0)/(temp*pow((cosh(8.0/temp)+3), 2));
 
-    cout << "\nExpectation values, analytical:\nEnergy: " << expectValAnalytical_E << endl;
+    cout << "\nExpectation values, analytical:" << endl;
+    //cout << "Energy: " << expectValAnalytical_E << endl;
     cout << "Heat capacity: " << expectValAnalytical_Cv << endl;
     cout << "Susceptibility: " << expectValAnalytical_X << endl;
     //cout << "Analytical Chi: " << Achi << endl;
