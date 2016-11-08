@@ -24,29 +24,43 @@ int pbc(int i, int limit, int add)
 // Main program
 int main(int argc, char *argv[])
 {
-    int nSpins = 2;
-    double temp = 1.0;
+    int nSpins, mcCycles;
+    double tempInit, tempFinal, tempStep;
 
-    //cout << "Energy: " << energy << endl;
-    //cout << "Magnetic moment: " << magneticMoment << endl;
-
-    //cout << "Energy difference:\n" << energyDifference << endl;
-
-    vec expectationValues = zeros<mat>(6);
-
-    // Monte Carlo cycles
-    int mcCycles = atoi(argv[1]);
+    // Get nSpins, mcCycles, tempInit, tempFinal and tempStep from input arguments
+    if (argc < 6)
+    {
+        cout << "Bad Usage: " << argv[0] << endl;
+        cout << "Read number of spins, MC cycles, initial and final temperature and tempurate step" << endl;
+        exit(1);
+    }
+    else
+    {
+        nSpins = atoi(argv[1]);
+        mcCycles = atoi(argv[2]);
+        tempInit = atof(argv[3]);
+        tempFinal = atof(argv[4]);
+        tempStep = atof(argv[5]);
+    }
 
     // Declare new file name and add lattice size to file name
     string fileout = "Lattice";
     fileout.append(to_string(nSpins) + ".txt");
     ofile.open(fileout);
+    ofile << setiosflags(ios::showpoint | ios::uppercase);
+    //ofile << setw(15) << "Temperature:" << setw(15) << "Energy:" << setw(15) << "Cv:" <<
+    //         setw(15) << "Magnetic m.:" << setw(15) << "Chi (X):" << setw(15) <<
+    //         "|Magnetic m.|:" << endl;
 
     clock_t time_initial = clock();
 
     // Start Metropolis algorithm with Monte Carlo sampling
-    metropolis(nSpins, mcCycles, temp, expectationValues);
-    writeToFile(nSpins, mcCycles, temp, expectationValues);
+    for(double temp = tempInit; temp <= tempFinal; temp += tempStep)
+    {
+        vec expectationValues = zeros<mat>(6);
+        metropolis(nSpins, mcCycles, temp, expectationValues);
+        writeToFile(nSpins, mcCycles, temp, expectationValues);
+    }
 
     ofile.close();
 
@@ -98,11 +112,9 @@ void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues)
     for(int dE = -8; dE <= 8; dE += 4)
     {
         energyDifference(dE + 8) = exp(-dE/temp);
-        //cout << "exp(-dE/temperature) = " << exp(-dE/temp) << "\tfor dE = " << dE << endl;
     }
 
     for(int i = 0; i < mcCycles; i++)
-    //while(!final)
     {
         // Sweep over the lattice
         for(int x = 0; x < nSpins; x++)
@@ -119,27 +131,20 @@ void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues)
                     spinMatrix(ix,iy) *= -1.0;
                     magneticMoment += (double) 2 * spinMatrix(ix,iy);
                     energy += (double) deltaE;
-                    //cout << "DeltaE: " << deltaE << "\t Energy: " << energy << endl;
                 }
             }
         }
-
         expectationValues(0) += energy;
         expectationValues(1) += energy * energy;
         expectationValues(2) += fabs(energy);
         expectationValues(3) += magneticMoment;
         expectationValues(4) += magneticMoment * magneticMoment;
         expectationValues(5) += fabs(magneticMoment);
-
-        //if(magneticMoment == -4) final = true;
-        //mcCycles++;
     }
 
-    cout << "Energy: " << energy << endl;
-    cout << "Magnetic moment: " << magneticMoment << endl;
-    cout << "MC cycles: " << mcCycles << endl;
-
-
+    //cout << "Energy: " << energy << endl;
+    //cout << "Magnetic moment: " << magneticMoment << endl;
+    //cout << "MC cycles: " << mcCycles << endl;
 }
 
 void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues)
@@ -159,7 +164,7 @@ void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues)
     double expectVal_Cv = (expectVal_E2 - expectVal_Eabs * expectVal_Eabs) * normSpins / (temp * temp);
     double expectVal_X = (expectVal_M2 - expectVal_Mabs * expectVal_Mabs) * normSpins / temp;
 
-    cout << "\nExpectation values, numerical: " << endl;
+    //cout << "\nExpectation values, numerical: " << endl;
     //cout << "Energy: " << expectVal_E << endl;
     //cout << "Energy^2: " << expectationValues_E2 << endl;
     //cout << "|Energy|: " << expectVal_Eabs << endl;
@@ -167,10 +172,11 @@ void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues)
     //cout << "Magnetic moment^2: " << expectationValues_M2 << endl;
     //cout << "|Magnetic moment|: " << expectVal_Mabs << endl;
 
-    cout << "Heat capacity: " << expectVal_Cv << endl;
-    cout << "Susceptibility: " << expectVal_X << endl;
+    //cout << "Heat capacity: " << expectVal_Cv << endl;
+    //cout << "Susceptibility: " << expectVal_X << endl;
 
     // Analytical values
+    /*
     double J = 1.0;
     double beta = 1.0;
     double Z = 4*cosh(8*J*beta) + 12;
@@ -181,30 +187,22 @@ void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues)
                                      expectValAnalytical_E) * normSpins / (temp * temp);
     double expectValAnalytical_X = (expectValAnalytical_M2 - expectValAnalytical_Mabs *
                                     expectValAnalytical_Mabs) * normSpins / temp;
-    //double Achi = 8*(exp(8.0/temp) + cosh(8.0/temp) + 3.0/2.0)/(temp*pow((cosh(8.0/temp)+3), 2));
+    */
 
-    cout << "\nExpectation values, analytical:" << endl;
+    //cout << "\nExpectation values, analytical:" << endl;
     //cout << "Energy: " << expectValAnalytical_E << endl;
-    cout << "Heat capacity: " << expectValAnalytical_Cv << endl;
-    cout << "Susceptibility: " << expectValAnalytical_X << endl;
-    //cout << "Analytical Chi: " << Achi << endl;
+    //cout << "Heat capacity: " << expectValAnalytical_Cv << endl;
+    //cout << "Susceptibility: " << expectValAnalytical_X << endl;
 
     // Error between numerical and analytical
-    cout << "Heat capacity (error): " << fabs(expectValAnalytical_Cv - expectVal_Cv) << endl;
-    cout << "Susceptibility (error): " << fabs(expectValAnalytical_X - expectVal_X) << endl;
+    //double CvError = fabs(expectValAnalytical_Cv - expectVal_Cv);
+    //double XError = fabs(expectValAnalytical_X - expectVal_X);
 
-    ofile << setiosflags(ios::showpoint | ios::uppercase);
+    //ofile << setiosflags(ios::showpoint | ios::uppercase);
     ofile << setw(15) << setprecision(8) << temp;
     ofile << setw(15) << setprecision(8) << expectVal_E * normSpins;
     ofile << setw(15) << setprecision(8) << expectVal_Cv;
     ofile << setw(15) << setprecision(8) << expectVal_M;
     ofile << setw(15) << setprecision(8) << expectVal_X;
-
-    /*
-    ofile << setw(15) << setprecision(8) << E_ExpectationValues/NSpins/NSpins;
-    ofile << setw(15) << setprecision(8) << Evariance/temperature/temperature;
-    ofile << setw(15) << setprecision(8) << M_ExpectationValues/NSpins/NSpins;
-    ofile << setw(15) << setprecision(8) << Mvariance/temperature;
-    ofile << setw(15) << setprecision(8) << Mabs_ExpectationValues/NSpins/NSpins << endl;
-    */
+    ofile << setw(15) << setprecision(8) << expectVal_Mabs * normSpins << endl;
 }
