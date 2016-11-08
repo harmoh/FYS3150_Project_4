@@ -12,8 +12,8 @@ ofstream ofile;
 
 // Declare functions
 void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magneticMoment);
-void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues);
-void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues, double &CvError, double &XError, int i);
+void metropolis(int nSpins, double mcCycles, double temp, vec &expectationValues);
+void writeToFile(int nSpins, double mcCycles, double temp, vec expectationValues, double &CvError, double &XError);
 
 // Periodic boundary conditions
 int pbc(int i, int limit, int add)
@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
         {
             vec expectationValues = zeros<mat>(6);
             metropolis(nSpins, mcCycles, temp, expectationValues);
-            writeToFile(nSpins, mcCycles, temp, expectationValues, CvError, XError, i);
+            writeToFile(nSpins, mcCycles, temp, expectationValues, CvError, XError);
         }
     }
 
@@ -129,7 +129,7 @@ void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magn
 }
 
 // Perform the Metropolis algorithm
-void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues)
+void metropolis(int nSpins, double mcCycles, double temp, vec &expectationValues)
 {
     // Initialize RNG, can be called by rand(gen) to get a random number between 0 and 1
     random_device rd;
@@ -147,7 +147,7 @@ void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues)
         energyDifference(dE + 8) = exp(-dE/temp);
     }
 
-    for(int i = 0; i < mcCycles; i++)
+    for(double i = 0; i < mcCycles; i++)
     {
         // Sweep over the lattice
         for(int x = 0; x < nSpins; x++)
@@ -180,7 +180,7 @@ void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues)
     //cout << "MC cycles: " << mcCycles << endl;
 }
 
-void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues, double &CvError, double &XError, int i)
+void writeToFile(int nSpins, double mcCycles, double temp, vec expectationValues, double &CvError, double &XError)
 {
     // Normalization of the values
     double norm = 1.0/mcCycles;
