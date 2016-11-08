@@ -13,7 +13,7 @@ ofstream ofile;
 // Declare functions
 void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magneticMoment);
 void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues);
-void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues);
+void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues, double &CvError, double &XError, int i);
 
 // Periodic boundary conditions
 int pbc(int i, int limit, int add)
@@ -24,24 +24,27 @@ int pbc(int i, int limit, int add)
 // Main program
 int main(int argc, char *argv[])
 {
-    int nSpins, mcCycles;
-    double tempInit, tempFinal, tempStep;
+    int nSpins, numberOfLoops;
+    double tempInit, tempFinal, tempStep, mcCycles;
 
     // Get nSpins, mcCycles, tempInit, tempFinal and tempStep from input arguments
     if (argc < 6)
     {
         cout << "Bad Usage: " << argv[0] << endl;
-        cout << "Read number of spins, MC cycles, initial and final temperature and tempurate step" << endl;
+        cout << "Read number of spins, MC cycles, initial and final temperature, ";
+        cout << "tempurate step and number of loops." << endl;
         exit(1);
     }
     else
     {
         nSpins = atoi(argv[1]);
-        mcCycles = atoi(argv[2]);
+        mcCycles = atof(argv[2]);
         tempInit = atof(argv[3]);
         tempFinal = atof(argv[4]);
         tempStep = atof(argv[5]);
+        numberOfLoops = atoi(argv[6]);
     }
+    cout << "MC cycles: " << mcCycles << endl;
 
     // Declare new file name and add lattice size to file name
     string fileout = "Lattice";
@@ -57,13 +60,23 @@ int main(int argc, char *argv[])
 
     clock_t time_initial = clock();
 
-    // Start Metropolis algorithm with Monte Carlo sampling
-    for(double temp = tempInit; temp <= tempFinal; temp += tempStep)
+    double CvError, XError;
+    for(int i = 0; i < numberOfLoops; i++)
     {
-        vec expectationValues = zeros<mat>(6);
-        metropolis(nSpins, mcCycles, temp, expectationValues);
-        writeToFile(nSpins, mcCycles, temp, expectationValues);
+        // Start Metropolis algorithm with Monte Carlo sampling
+        for(double temp = tempInit; temp <= tempFinal; temp += tempStep)
+        {
+            vec expectationValues = zeros<mat>(6);
+            metropolis(nSpins, mcCycles, temp, expectationValues);
+            writeToFile(nSpins, mcCycles, temp, expectationValues, CvError, XError, i);
+        }
     }
+
+    CvError /= numberOfLoops;
+    XError /= numberOfLoops;
+
+    cout << "Cv error: " << CvError << endl;
+    cout << "X error: " << XError << endl;
 
     ofile.close();
 
@@ -167,7 +180,7 @@ void metropolis(int nSpins, int mcCycles, double temp, vec &expectationValues)
     //cout << "MC cycles: " << mcCycles << endl;
 }
 
-void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues)
+void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues, double &CvError, double &XError, int i)
 {
     // Normalization of the values
     double norm = 1.0/mcCycles;
@@ -212,10 +225,12 @@ void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues)
     //cout << "Susceptibility: " << expectValAnalytical_X << endl;
 
     // Error between numerical and analytical
-    double CvError = fabs(expectValAnalytical_Cv - expectVal_Cv) / expectValAnalytical_Cv;
-    double XError = fabs(expectValAnalytical_X - expectVal_X) / expectValAnalytical_X;
-    cout << "Cv error: " << CvError << endl;
-    cout << "X error: " << XError << endl;
+    //vec CvError(10);
+    //vec XError(10);
+    CvError += fabs(expectValAnalytical_Cv - expectVal_Cv) / expectValAnalytical_Cv;
+    XError += fabs(expectValAnalytical_X - expectVal_X) / expectValAnalytical_X;
+    //cout << "Cv error: " << CvError << endl;
+    //cout << "X error: " << XError << endl;
 
     //ofile << setiosflags(ios::showpoint | ios::uppercase);
     ofile << setw(15) << setprecision(8) << temp;
