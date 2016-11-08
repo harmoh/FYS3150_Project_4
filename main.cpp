@@ -45,12 +45,15 @@ int main(int argc, char *argv[])
 
     // Declare new file name and add lattice size to file name
     string fileout = "Lattice";
-    fileout.append(to_string(nSpins) + ".txt");
+    fileout.append(to_string(nSpins) + "x" + to_string(nSpins) + "_1e");
+    stringstream nSpinsString;
+    nSpinsString << log10(mcCycles);
+    fileout.append(nSpinsString.str() + ".txt");
     ofile.open(fileout);
     ofile << setiosflags(ios::showpoint | ios::uppercase);
-    //ofile << setw(15) << "Temperature:" << setw(15) << "Energy:" << setw(15) << "Cv:" <<
-    //         setw(15) << "Magnetic m.:" << setw(15) << "Chi (X):" << setw(15) <<
-    //         "|Magnetic m.|:" << endl;
+    ofile << setw(15) << "Temperature:" << setw(15) << "Energy:" << setw(15) << "Cv:" <<
+             setw(15) << "Magnetization:" << setw(15) << "Chi (X):" << setw(15) <<
+             "|Magnetization|:" << endl;
 
     clock_t time_initial = clock();
 
@@ -67,7 +70,7 @@ int main(int argc, char *argv[])
     clock_t time_final = clock();
     double elapsed_time = (time_final - time_initial) / (double) CLOCKS_PER_SEC;
 
-    cout << "\nTime: " << elapsed_time << " seconds." << endl;
+    cout << "Time: " << elapsed_time << " seconds." << endl;
 
     return 0;
 }
@@ -75,22 +78,39 @@ int main(int argc, char *argv[])
 // Initalize lattice with spins, magnetic moment and energy
 void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magneticMoment)
 {
-    // Set ground state of the lattice and magnetic moment
+    // Initialize RNG, can be called by rand(gen) to get a random number between 0 and 1
+    random_device rd;
+    mt19937_64 gen(rd());
+    uniform_real_distribution<double> rand(0.0,1.0);
+
+    // Spin state sets the ground state of the spins, 1 is all up, -1 is all down and 0 is random
+    int spinState = 1;
+
+    // Set ground state of the lattice
     for(int y = 0; y < nSpins; y++)
     {
         for(int x = 0; x < nSpins; x++)
         {
-            spinMatrix(x,y) = 1.0;
-            magneticMoment += (double) spinMatrix(x,y);
+            if(spinState == 1) spinMatrix(x,y) = 1.0; // All spins are up
+            if(spinState == -1) spinMatrix(x,y) = -1.0; // All spins are down
+            if(spinState == 0) // Random spin directions
+            {
+                double random = rand(gen);
+                if(random < 0.5) spinMatrix(x,y) = -1.0;
+                if(random >= 0.5) spinMatrix(x,y) = 1.0;
+            }
         }
     }
+    //cout << spinMatrix << endl;
 
-    // Set up energy
+    // Set up magnetic moment and energy
     for(int y = 0; y < nSpins; y++)
     {
         for(int x = 0; x < nSpins; x++)
         {
-            energy -= spinMatrix(x,y)*(spinMatrix(pbc(x,nSpins,-1),y) + spinMatrix(x,pbc(y,nSpins,-1)));
+            magneticMoment += (double) spinMatrix(x,y);
+            energy -= spinMatrix(x,y) * (spinMatrix(pbc(x,nSpins,-1),y) +
+                                         spinMatrix(x,pbc(y,nSpins,-1)));
         }
     }
 }
@@ -171,12 +191,10 @@ void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues)
     //cout << "Magnetic moment: " << expectVal_M << endl;
     //cout << "Magnetic moment^2: " << expectationValues_M2 << endl;
     //cout << "|Magnetic moment|: " << expectVal_Mabs << endl;
-
     //cout << "Heat capacity: " << expectVal_Cv << endl;
     //cout << "Susceptibility: " << expectVal_X << endl;
 
     // Analytical values
-    /*
     double J = 1.0;
     double beta = 1.0;
     double Z = 4*cosh(8*J*beta) + 12;
@@ -187,7 +205,6 @@ void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues)
                                      expectValAnalytical_E) * normSpins / (temp * temp);
     double expectValAnalytical_X = (expectValAnalytical_M2 - expectValAnalytical_Mabs *
                                     expectValAnalytical_Mabs) * normSpins / temp;
-    */
 
     //cout << "\nExpectation values, analytical:" << endl;
     //cout << "Energy: " << expectValAnalytical_E << endl;
@@ -195,14 +212,16 @@ void writeToFile(int nSpins, int mcCycles, double temp, vec expectationValues)
     //cout << "Susceptibility: " << expectValAnalytical_X << endl;
 
     // Error between numerical and analytical
-    //double CvError = fabs(expectValAnalytical_Cv - expectVal_Cv);
-    //double XError = fabs(expectValAnalytical_X - expectVal_X);
+    double CvError = fabs(expectValAnalytical_Cv - expectVal_Cv) / expectValAnalytical_Cv;
+    double XError = fabs(expectValAnalytical_X - expectVal_X) / expectValAnalytical_X;
+    cout << "Cv error: " << CvError << endl;
+    cout << "X error: " << XError << endl;
 
     //ofile << setiosflags(ios::showpoint | ios::uppercase);
     ofile << setw(15) << setprecision(8) << temp;
     ofile << setw(15) << setprecision(8) << expectVal_E * normSpins;
     ofile << setw(15) << setprecision(8) << expectVal_Cv;
-    ofile << setw(15) << setprecision(8) << expectVal_M;
+    ofile << setw(15) << setprecision(8) << expectVal_M * normSpins;
     ofile << setw(15) << setprecision(8) << expectVal_X;
     ofile << setw(15) << setprecision(8) << expectVal_Mabs * normSpins << endl;
 }
