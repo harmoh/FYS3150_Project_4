@@ -48,15 +48,22 @@ int main(int argc, char *argv[])
 
     // Declare new file name and add lattice size to file name
     string fileout = "Lattice";
-    fileout.append(to_string(nSpins) + "x" + to_string(nSpins) + "_1e");
-    stringstream nSpinsString;
-    nSpinsString << log10(mcCycles);
-    fileout.append(nSpinsString.str() + ".txt");
+
+    // Add MC cycles to filename
+    //fileout.append(to_string(nSpins) + "x" + to_string(nSpins) + "_1e");
+    //stringstream mcCyclesString;
+    //mcCyclesString << log10(mcCycles);
+    //fileout.append(mcCyclesString.str() + ".txt");
+
+    // Without MC cycles to filename
+    fileout.append(to_string(nSpins) + "x" + to_string(nSpins));
+    fileout.append(".txt");
+
     ofile.open(fileout);
     ofile << setiosflags(ios::showpoint | ios::uppercase);
-    ofile << setw(15) << "Temperature:" << setw(15) << "Energy:" << setw(15) << "Cv:" <<
-             setw(15) << "Magnetization:" << setw(15) << "Chi (X):" << setw(15) <<
-             "|Magnetization|:" << endl;
+    ofile << setw(15) << "MC cycles:" << setw(15) << "Temperature:" << setw(15) << "Energy:" <<
+             setw(15) << "Cv:" << setw(15) << "Magnetization:" << setw(15) << "Chi (X):" <<
+             setw(15) << "|Magnetization|:" << endl;
 
     clock_t time_initial = clock();
 
@@ -75,8 +82,8 @@ int main(int argc, char *argv[])
     CvError /= numberOfLoops;
     XError /= numberOfLoops;
 
-    cout << "Cv error: " << CvError << endl;
-    cout << "X error: " << XError << endl;
+    //cout << "Cv error: " << CvError << endl;
+    //cout << "X error: " << XError << endl;
 
     ofile.close();
 
@@ -233,6 +240,7 @@ void writeToFile(int nSpins, double mcCycles, double temp, vec expectationValues
     //cout << "X error: " << XError << endl;
 
     //ofile << setiosflags(ios::showpoint | ios::uppercase);
+    ofile << setw(15) << setprecision(8) << mcCycles;
     ofile << setw(15) << setprecision(8) << temp;
     ofile << setw(15) << setprecision(8) << expectVal_E * normSpins;
     ofile << setw(15) << setprecision(8) << expectVal_Cv;
