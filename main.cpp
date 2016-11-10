@@ -12,8 +12,8 @@ ofstream ofile;
 
 // Declare functions
 void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magneticMoment);
-void metropolis(int nSpins, double mcCycles, double temp, vec &expectationValues);
-void writeToFile(int nSpins, double mcCycles, double temp, vec expectationValues, double &CvError, double &XError);
+void metropolis(int nSpins, double mcCycles, double temp, vec &expectationValues, double &acceptedFlips);
+void writeToFile(int nSpins, double mcCycles, double temp, vec expectationValues, double &CvError, double &XError, double acceptedFlips);
 
 // Periodic boundary conditions
 int pbc(int i, int limit, int add)
@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     ofile << setiosflags(ios::showpoint | ios::uppercase);
     ofile << setw(15) << "MC cycles:" << setw(15) << "Temperature:" << setw(15) << "Energy:" <<
              setw(15) << "Cv:" << setw(15) << "Magnetization:" << setw(15) << "Chi (X):" <<
-             setw(15) << "|Magnetization|:" << endl;
+             setw(15) << "|Magnetization|:" << setw(15) << "# Flips:" << endl;
 
     clock_t time_initial = clock();
 
@@ -73,9 +73,12 @@ int main(int argc, char *argv[])
         // Start Metropolis algorithm with Monte Carlo sampling
         for(double temp = tempInit; temp <= tempFinal; temp += tempStep)
         {
+            double acceptedFlips = 0;
+            cout << "Temperature: " << temp << endl;
             vec expectationValues = zeros<mat>(6);
-            metropolis(nSpins, mcCycles, temp, expectationValues);
-            writeToFile(nSpins, mcCycles, temp, expectationValues, CvError, XError);
+            metropolis(nSpins, mcCycles, temp, expectationValues, acceptedFlips);
+            writeToFile(nSpins, mcCycles, temp, expectationValues, CvError, XError, acceptedFlips);
+            cout << "Accepted flips: " << acceptedFlips << endl;
         }
     }
 
@@ -136,7 +139,7 @@ void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magn
 }
 
 // Perform the Metropolis algorithm
-void metropolis(int nSpins, double mcCycles, double temp, vec &expectationValues)
+void metropolis(int nSpins, double mcCycles, double temp, vec &expectationValues, double &acceptedFlips)
 {
     // Initialize RNG, can be called by rand(gen) to get a random number between 0 and 1
     random_device rd;
@@ -171,6 +174,7 @@ void metropolis(int nSpins, double mcCycles, double temp, vec &expectationValues
                     spinMatrix(ix,iy) *= -1.0;
                     magneticMoment += (double) 2 * spinMatrix(ix,iy);
                     energy += (double) deltaE;
+                    acceptedFlips++;
                 }
             }
         }
@@ -187,7 +191,7 @@ void metropolis(int nSpins, double mcCycles, double temp, vec &expectationValues
     //cout << "MC cycles: " << mcCycles << endl;
 }
 
-void writeToFile(int nSpins, double mcCycles, double temp, vec expectationValues, double &CvError, double &XError)
+void writeToFile(int nSpins, double mcCycles, double temp, vec expectationValues, double &CvError, double &XError, double acceptedFlips)
 {
     // Normalization of the values
     double norm = 1.0/mcCycles;
@@ -246,5 +250,6 @@ void writeToFile(int nSpins, double mcCycles, double temp, vec expectationValues
     ofile << setw(15) << setprecision(8) << expectVal_Cv;
     ofile << setw(15) << setprecision(8) << expectVal_M * normSpins;
     ofile << setw(15) << setprecision(8) << expectVal_X;
-    ofile << setw(15) << setprecision(8) << expectVal_Mabs * normSpins << endl;
+    ofile << setw(15) << setprecision(8) << expectVal_Mabs * normSpins;
+    ofile << setw(15) << setprecision(8) << acceptedFlips << endl;
 }

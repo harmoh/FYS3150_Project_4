@@ -25,10 +25,10 @@ def read(filename):
     return x1, x2, x3, x4
 
 x1 = []; x2 = []; x3 = []; x4 = []; analytical_Cv = []; analytical_X = [];
-nSpins = 20;
-maxMCcycles = 7; # Written as the exponential
+nSpins = 2;
+maxMCcycles = 8; # Written as the exponential
 
-exponentialStepSize = (i*10**exp for exp in range(2, maxMCcycles) for i in range(1, 6, 4))
+exponentialStepSize = (i*10**exp for exp in range(3, maxMCcycles) for i in range(1, 10, 1))
 for mcCycles in exponentialStepSize:
     run = './main.o ' + str(nSpins) + ' ' + str(mcCycles) + ' 1.0 1.0 0.01 1';
     os.system(run) # Argument for number of spins, MC cycles, initial and final temperature, tempurate step and number of loops.
@@ -50,12 +50,12 @@ plt.rcParams.update({'font.size': 10})
 axes = plt.gca()
 #axes.set_xlim([xmin,xmax])
 #axes.set_ylim([-2,-1.99])
-plt.plot(x1, x2, linewidth = 1.0, label = 'Energy')
+#plt.plot(x1, x2, linewidth = 1.0, label = 'Energy')
 #plt.plot(x1, x3, linewidth = 1.0, label = 'Magnetic moment')
-#plt.plot(x1, x4, label = '$\chi$, numerical')
+plt.plot(x1, x4, label = '$\chi$, numerical')
 #plt.plot(x1, analytical_Cv, label = '$C_V$, analytical')
-#plt.plot(x1, analytical_X, label = '$\chi$, analytical')
+plt.plot(x1, analytical_X, label = '$\chi$, analytical')
 plt.legend(loc='upper right',fancybox='True')
 plt.grid()
-plt.savefig('Lattice' + str(nSpins) + 'x' + str(nSpins) + '_energy_0_.eps', format = 'eps', dpi = 1000, bbox_inches='tight')
+plt.savefig('Lattice' + str(nSpins) + 'x' + str(nSpins) + '.eps', format = 'eps', dpi = 1000, bbox_inches='tight')
 #plt.show();
