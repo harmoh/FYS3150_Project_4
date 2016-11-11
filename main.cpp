@@ -1,3 +1,4 @@
+#include "mpi.h"
 #include <random>
 #include <fstream>
 #include <iostream>
@@ -12,7 +13,7 @@ ofstream ofile;
 
 // Declare functions
 void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magneticMoment);
-void metropolis(int nSpins, double mcCycles, double temp, vec &expectationValues, double &acceptedFlips);
+void metropolis(int nSpins, mat &spinMatrix, double &energy, double &magneticMoment, double &acceptedFlips, vec &energyDifference);
 void writeToFile(int nSpins, double mcCycles, double temp, vec expectationValues, double &CvError, double &XError, double acceptedFlips);
 
 // Periodic boundary conditions
@@ -24,8 +25,13 @@ int pbc(int i, int limit, int add)
 // Main program
 int main(int argc, char *argv[])
 {
-    int nSpins, numberOfLoops;
+    int nSpins, numberOfLoops, my_rank, numprocs;
     double tempInit, tempFinal, tempStep, mcCycles;
+
+    //  MPI initializations
+    MPI_Init (&argc, &argv);
+    MPI_Comm_size (MPI_COMM_WORLD, &numprocs);
+    MPI_Comm_rank (MPI_COMM_WORLD, &my_rank);
 
     // Get nSpins, mcCycles, tempInit, tempFinal and tempStep from input arguments
     if (argc < 6)
@@ -46,6 +52,22 @@ int main(int argc, char *argv[])
     }
     cout << "MC cycles: " << mcCycles << endl;
 
+    /*
+     * Determine number of intervall which are used by all processes
+     * myloop_begin gives the starting point on process my_rank
+     * myloop_end gives the end point for summation on process my_rank
+     */
+    int noIntervalls = mcCycles / numprocs;
+    int myloopBegin = my_rank * noIntervalls + 1;
+    int myloopEnd = (my_rank + 1) * noIntervalls;
+    if ((my_rank == numprocs - 1) && (myloopEnd < mcCycles)) myloopEnd = mcCycles;
+
+    // broadcast to all nodes common variables
+    MPI_Bcast (&nSpins, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast (&tempInit, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast (&tempFinal, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast (&tempStep, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
     // Declare new file name and add lattice size to file name
     string fileout = "Lattice";
 
@@ -57,7 +79,7 @@ int main(int argc, char *argv[])
 
     // Without MC cycles to filename
     fileout.append(to_string(nSpins) + "x" + to_string(nSpins));
-    fileout.append(".txt");
+    fileout.append("_MPI.txt");
 
     ofile.open(fileout);
     ofile << setiosflags(ios::showpoint | ios::uppercase);
@@ -66,7 +88,7 @@ int main(int argc, char *argv[])
              setw(15) << "|Magnetization|:" << setw(15) << "# Flips:" << endl;
 
     clock_t time_initial = clock();
-
+    double timeStart = MPI_Wtime();
     double CvError, XError;
     for(int i = 0; i < numberOfLoops; i++)
     {
@@ -76,8 +98,33 @@ int main(int argc, char *argv[])
             double acceptedFlips = 0;
             cout << "Temperature: " << temp << endl;
             vec expectationValues = zeros<mat>(6);
-            metropolis(nSpins, mcCycles, temp, expectationValues, acceptedFlips);
-            writeToFile(nSpins, mcCycles, temp, expectationValues, CvError, XError, acceptedFlips);
+
+            double energy = 0.0;
+            double magneticMoment = 0.0;
+            mat spinMatrix = zeros<mat>(nSpins,nSpins);
+            initializeLattice(nSpins, spinMatrix, energy, magneticMoment);
+
+            vec energyDifference = zeros<mat>(17);
+            for(int dE = -8; dE <= 8; dE += 4)
+            {
+                energyDifference(dE + 8) = exp(-dE/temp);
+            }
+
+            for(double cycles = myloopBegin; cycles <= myloopEnd; cycles++)
+            {
+                metropolis(nSpins, spinMatrix, energy, magneticMoment, acceptedFlips, energyDifference);
+            }
+            expectationValues(0) += energy;
+            expectationValues(1) += energy * energy;
+            expectationValues(2) += fabs(energy);
+            expectationValues(3) += magneticMoment;
+            expectationValues(4) += magneticMoment * magneticMoment;
+            expectationValues(5) += fabs(magneticMoment);
+
+            if(my_rank == 0)
+            {
+                writeToFile(nSpins, mcCycles, temp, expectationValues, CvError, XError, acceptedFlips);
+            }
             cout << "Accepted flips: " << acceptedFlips << endl;
         }
     }
@@ -95,6 +142,16 @@ int main(int argc, char *argv[])
 
     cout << "Time: " << elapsed_time << " seconds." << endl;
 
+    double timeEnd = MPI_Wtime();
+    double totalTime = timeEnd - timeStart;
+    if (my_rank == 0)
+    {
+        cout << "Time = " <<  totalTime  << " on number of processors: "  << numprocs  << endl;
+    }
+
+    // End MPI
+    MPI_Finalize ();
+
     return 0;
 }
 
@@ -104,7 +161,7 @@ void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magn
     // Initialize RNG, can be called by rand(gen) to get a random number between 0 and 1
     random_device rd;
     mt19937_64 gen(rd());
-    uniform_real_distribution<double> rand(0.0,1.0);
+    uniform_real_distribution<double> rand(0.0, 1.0);
 
     // Spin state sets the ground state of the spins, 1 is all up, -1 is all down and 0 is random
     int spinState = 1;
@@ -118,9 +175,8 @@ void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magn
             if(spinState == -1) spinMatrix(x,y) = -1.0; // All spins are down
             if(spinState == 0) // Random spin directions
             {
-                double random = rand(gen);
-                if(random < 0.5) spinMatrix(x,y) = -1.0;
-                if(random >= 0.5) spinMatrix(x,y) = 1.0;
+                if(rand(gen) < 0.5) spinMatrix(x,y) = -1.0;
+                if(rand(gen) >= 0.5) spinMatrix(x,y) = 1.0;
             }
         }
     }
@@ -139,51 +195,31 @@ void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magn
 }
 
 // Perform the Metropolis algorithm
-void metropolis(int nSpins, double mcCycles, double temp, vec &expectationValues, double &acceptedFlips)
+void metropolis(int nSpins, mat &spinMatrix, double &energy, double &magneticMoment, double &acceptedFlips, vec &energyDifference)
 {
     // Initialize RNG, can be called by rand(gen) to get a random number between 0 and 1
     random_device rd;
     mt19937_64 gen(rd());
-    uniform_real_distribution<double> rand(0.0,1.0);
+    uniform_real_distribution<double> rand(0.0, 1.0);
 
-    double energy = 0.0;
-    double magneticMoment = 0.0;
-    mat spinMatrix = zeros<mat>(nSpins,nSpins);
-    initializeLattice(nSpins, spinMatrix, energy, magneticMoment);
-
-    vec energyDifference = zeros<mat>(17);
-    for(int dE = -8; dE <= 8; dE += 4)
+    // Sweep over the lattice
+    for(int x = 0; x < nSpins; x++)
     {
-        energyDifference(dE + 8) = exp(-dE/temp);
-    }
-
-    for(double i = 0; i < mcCycles; i++)
-    {
-        // Sweep over the lattice
-        for(int x = 0; x < nSpins; x++)
+        for(int y = 0; y < nSpins; y++)
         {
-            for(int y = 0; y < nSpins; y++)
+            int ix = (int) (rand(gen) * (double) nSpins);
+            int iy = (int) (rand(gen) * (double) nSpins);
+            int deltaE = 2 * spinMatrix(ix,iy) *
+                    (spinMatrix(pbc(ix,nSpins,-1),iy) + spinMatrix(ix,pbc(iy,nSpins,-1)) +
+                     spinMatrix(pbc(ix,nSpins,1),iy) + spinMatrix(ix,pbc(iy,nSpins,1)));
+            if(rand(gen) <= energyDifference(deltaE + 8))
             {
-                int ix = (int) (rand(gen) * (double) nSpins);
-                int iy = (int) (rand(gen) * (double) nSpins);
-                int deltaE = 2 * spinMatrix(ix,iy) *
-                        (spinMatrix(pbc(ix,nSpins,-1),iy) + spinMatrix(ix,pbc(iy,nSpins,-1)) +
-                         spinMatrix(pbc(ix,nSpins,1),iy) + spinMatrix(ix,pbc(iy,nSpins,1)));
-                if(rand(gen) <= energyDifference(deltaE + 8))
-                {
-                    spinMatrix(ix,iy) *= -1.0;
-                    magneticMoment += (double) 2 * spinMatrix(ix,iy);
-                    energy += (double) deltaE;
-                    acceptedFlips++;
-                }
+                spinMatrix(ix,iy) *= -1.0;
+                magneticMoment += (double) 2 * spinMatrix(ix,iy);
+                energy += (double) deltaE;
+                acceptedFlips++;
             }
         }
-        expectationValues(0) += energy;
-        expectationValues(1) += energy * energy;
-        expectationValues(2) += fabs(energy);
-        expectationValues(3) += magneticMoment;
-        expectationValues(4) += magneticMoment * magneticMoment;
-        expectationValues(5) += fabs(magneticMoment);
     }
 
     //cout << "Energy: " << energy << endl;
@@ -194,16 +230,16 @@ void metropolis(int nSpins, double mcCycles, double temp, vec &expectationValues
 void writeToFile(int nSpins, double mcCycles, double temp, vec expectationValues, double &CvError, double &XError, double acceptedFlips)
 {
     // Normalization of the values
-    double norm = 1.0/mcCycles;
+    double norm = 1.0 / mcCycles;
     double normSpins = 1.0 / nSpins / nSpins;
 
     // Numerical values
-    double expectVal_E = expectationValues(0)*norm;// / nSpins / nSpins;
-    double expectVal_E2 = expectationValues(1)*norm;
-    double expectVal_Eabs = expectationValues(2)*norm;
-    double expectVal_M = expectationValues(3)*norm;// / nSpins / nSpins;
-    double expectVal_M2 = expectationValues(4)*norm;// / nSpins / nSpins;
-    double expectVal_Mabs = expectationValues(5)*norm;
+    double expectVal_E = expectationValues(0) * norm;// / nSpins / nSpins;
+    double expectVal_E2 = expectationValues(1) * norm;
+    double expectVal_Eabs = expectationValues(2) * norm;
+    double expectVal_M = expectationValues(3) * norm;// / nSpins / nSpins;
+    double expectVal_M2 = expectationValues(4) * norm;// / nSpins / nSpins;
+    double expectVal_Mabs = expectationValues(5) * norm;
 
     double expectVal_Cv = (expectVal_E2 - expectVal_Eabs * expectVal_Eabs) * normSpins / (temp * temp);
     double expectVal_X = (expectVal_M2 - expectVal_Mabs * expectVal_Mabs) * normSpins / temp;
