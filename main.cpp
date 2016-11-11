@@ -50,7 +50,10 @@ int main(int argc, char *argv[])
         tempStep = atof(argv[5]);
         numberOfLoops = atoi(argv[6]);
     }
-    cout << "MC cycles: " << mcCycles << endl;
+    if(my_rank == 0)
+    {
+        cout << "MC cycles: " << mcCycles << endl;
+    }
 
     /*
      * Determine number of intervall which are used by all processes
@@ -87,7 +90,6 @@ int main(int argc, char *argv[])
              setw(15) << "Cv:" << setw(15) << "Magnetization:" << setw(15) << "Chi (X):" <<
              setw(15) << "|Magnetization|:" << setw(15) << "# Flips:" << endl;
 
-    clock_t time_initial = clock();
     double timeStart = MPI_Wtime();
     double CvError, XError;
     for(int i = 0; i < numberOfLoops; i++)
@@ -97,7 +99,10 @@ int main(int argc, char *argv[])
         {
             double acceptedFlips = 0.0;
             double newAcceptedFlips = 0.0;
-            cout << "Temperature: " << temp << endl;
+            if(my_rank == 0)
+            {
+                cout << "Temperature: " << temp << endl;
+            }
             vec expectationValues = zeros<mat>(6);
             vec totalExpectationValues = zeros<mat>(6);
 
@@ -134,8 +139,8 @@ int main(int argc, char *argv[])
             if(my_rank == 0)
             {
                 writeToFile(nSpins, mcCycles, temp, totalExpectationValues, CvError, XError, newAcceptedFlips);
+                cout << "Accepted flips: " << newAcceptedFlips << endl;
             }
-            cout << "Accepted flips: " << newAcceptedFlips << endl;
         }
     }
 
@@ -146,11 +151,6 @@ int main(int argc, char *argv[])
     //cout << "X error: " << XError << endl;
 
     ofile.close();
-
-    clock_t time_final = clock();
-    double elapsed_time = (time_final - time_initial) / (double) CLOCKS_PER_SEC;
-
-    cout << "Time: " << elapsed_time << " seconds." << endl;
 
     double timeEnd = MPI_Wtime();
     double totalTime = timeEnd - timeStart;
