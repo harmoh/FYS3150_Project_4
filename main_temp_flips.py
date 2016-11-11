@@ -5,7 +5,7 @@ from math import *
 import numpy as np
 from matplotlib import pyplot as plt
 
-os.system('c++ main.cpp -o main.o -O3 -I /usr/local/Cellar/armadillo/7.400.2/include -DARMA_DONT_USE_WRAPPER -lblas -llapack')
+os.system('mpic++ main.cpp -o main.o -O3 -I /usr/local/Cellar/armadillo/7.400.2/include -DARMA_DONT_USE_WRAPPER -lblas -llapack')
 
 def read(filename):
     infile = open(filename, 'r')
@@ -26,11 +26,11 @@ def read(filename):
     infile.close()
     return x1, x2, x3, x4, x5, x6, x7
 
-run = './main.o 20 100000 1.0 2.5 0.1 1';
+run = 'mpirun -n 4 ./main.o 20 100000 1.0 2.5 0.1 1';
 os.system(run) # Argument for number of spins, MC cycles, initial and final temperature, tempurate step and number of loops.
 
 # Fetching data by a call on read_x_u_v for three different n:
-x1, x2, x3, x4, x5, x6, x7 = read('Lattice20x20.txt')
+x1, x2, x3, x4, x5, x6, x7 = read('Lattice20x20_MPI.txt')
 
 plt.xlabel('Temperature')
 plt.ylabel('Number of accepted flips')

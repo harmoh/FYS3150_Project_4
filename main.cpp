@@ -136,6 +136,8 @@ int main(int argc, char *argv[])
             }
             MPI_Reduce(&acceptedFlips, &newAcceptedFlips, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
+            newAcceptedFlips /= mcCycles;
+
             if(my_rank == 0)
             {
                 writeToFile(nSpins, mcCycles, temp, totalExpectationValues, CvError, XError, newAcceptedFlips);
@@ -156,7 +158,7 @@ int main(int argc, char *argv[])
     double totalTime = timeEnd - timeStart;
     if (my_rank == 0)
     {
-        cout << "Time = " <<  totalTime  << " on number of processors: "  << numprocs  << endl;
+        cout << "Time = " <<  totalTime  << " seconds on number of processors: "  << numprocs  << endl;
     }
 
     // End MPI
@@ -174,7 +176,7 @@ void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magn
     uniform_real_distribution<double> rand(0.0, 1.0);
 
     // Spin state sets the ground state of the spins, 1 is all up, -1 is all down and 0 is random
-    int spinState = 1;
+    int spinState = 0;
 
     // Set ground state of the lattice
     for(int y = 0; y < nSpins; y++)
