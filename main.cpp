@@ -57,12 +57,12 @@ int main(int argc, char *argv[])
      * myloop_begin gives the starting point on process my_rank
      * myloop_end gives the end point for summation on process my_rank
      */
-    int noIntervalls = mcCycles / numprocs;
-    int myloopBegin = my_rank * noIntervalls + 1;
-    int myloopEnd = (my_rank + 1) * noIntervalls;
+    int noIntervals = mcCycles / numprocs;
+    int myloopBegin = my_rank * noIntervals + 1;
+    int myloopEnd = (my_rank + 1) * noIntervals;
     if ((my_rank == numprocs - 1) && (myloopEnd < mcCycles)) myloopEnd = mcCycles;
 
-    // broadcast to all nodes common variables
+    // Broadcast to all nodes common variables
     MPI_Bcast (&nSpins, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast (&tempInit, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Bcast (&tempFinal, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -95,9 +95,11 @@ int main(int argc, char *argv[])
         // Start Metropolis algorithm with Monte Carlo sampling
         for(double temp = tempInit; temp <= tempFinal; temp += tempStep)
         {
-            double acceptedFlips = 0;
+            double acceptedFlips = 0.0;
+            double newAcceptedFlips = 0.0;
             cout << "Temperature: " << temp << endl;
             vec expectationValues = zeros<mat>(6);
+            vec totalExpectationValues = zeros<mat>(6);
 
             double energy = 0.0;
             double magneticMoment = 0.0;
@@ -113,19 +115,27 @@ int main(int argc, char *argv[])
             for(double cycles = myloopBegin; cycles <= myloopEnd; cycles++)
             {
                 metropolis(nSpins, spinMatrix, energy, magneticMoment, acceptedFlips, energyDifference);
+
+                expectationValues(0) += energy;
+                expectationValues(1) += energy * energy;
+                expectationValues(2) += fabs(energy);
+                expectationValues(3) += magneticMoment;
+                expectationValues(4) += magneticMoment * magneticMoment;
+                expectationValues(5) += fabs(magneticMoment);
             }
-            expectationValues(0) += energy;
-            expectationValues(1) += energy * energy;
-            expectationValues(2) += fabs(energy);
-            expectationValues(3) += magneticMoment;
-            expectationValues(4) += magneticMoment * magneticMoment;
-            expectationValues(5) += fabs(magneticMoment);
+
+            // Find total average
+            for(int i = 0; i < 6; i++)
+            {
+                MPI_Reduce(&expectationValues[i], &totalExpectationValues[i], 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+            }
+            MPI_Reduce(&acceptedFlips, &newAcceptedFlips, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
             if(my_rank == 0)
             {
-                writeToFile(nSpins, mcCycles, temp, expectationValues, CvError, XError, acceptedFlips);
+                writeToFile(nSpins, mcCycles, temp, totalExpectationValues, CvError, XError, newAcceptedFlips);
             }
-            cout << "Accepted flips: " << acceptedFlips << endl;
+            cout << "Accepted flips: " << newAcceptedFlips << endl;
         }
     }
 
