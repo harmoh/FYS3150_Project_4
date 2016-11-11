@@ -57,5 +57,5 @@ plt.plot(x1, x2, linewidth = 1.0, label = 'Energy')
 #plt.plot(x1, analytical_X, label = '$\chi$, analytical')
 plt.legend(loc='upper right',fancybox='True')
 plt.grid()
-plt.savefig('Lattice' + str(nSpins) + 'x' + str(nSpins) + '_mag_rand_temp=1.0_.eps', format = 'eps', dpi = 1000, bbox_inches='tight')
+plt.savefig('Lattice' + str(nSpins) + 'x' + str(nSpins) + '_energy_rand_temp=1.0_.eps', format = 'eps', dpi = 1000, bbox_inches='tight')
 #plt.show();

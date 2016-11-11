@@ -9,7 +9,7 @@
 using namespace std;
 using namespace arma;
 
-ofstream ofile;
+ofstream ofile, ofile_prob;
 
 // Declare functions
 void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magneticMoment);
@@ -103,6 +103,10 @@ int main(int argc, char *argv[])
             {
                 cout << "Temperature: " << temp << endl;
             }
+            int energyStates = mcCycles;
+            vec energyState = zeros<mat>(energyStates);
+            vec totalEnergyState = zeros<mat>(energyStates);
+
             vec expectationValues = zeros<mat>(6);
             vec totalExpectationValues = zeros<mat>(6);
 
@@ -117,9 +121,12 @@ int main(int argc, char *argv[])
                 energyDifference(dE + 8) = exp(-dE/temp);
             }
 
+            int i = 0;
             for(double cycles = myloopBegin; cycles <= myloopEnd; cycles++)
             {
                 metropolis(nSpins, spinMatrix, energy, magneticMoment, acceptedFlips, energyDifference);
+
+                energyState[cycles] = energy;
 
                 expectationValues(0) += energy;
                 expectationValues(1) += energy * energy;
@@ -135,13 +142,52 @@ int main(int argc, char *argv[])
                 MPI_Reduce(&expectationValues[i], &totalExpectationValues[i], 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
             }
             MPI_Reduce(&acceptedFlips, &newAcceptedFlips, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+            for(int i = 0; i < energyStates; i++)
+            {
+                MPI_Reduce(&energyState[i], &totalEnergyState[i], 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+            }
 
             newAcceptedFlips /= mcCycles;
+            totalEnergyState /= mcCycles;
+
+            /*
+             * Search through energyState[i]
+             * Check how many of each (-1000, -999, -998, etc.) (from -1000 to 0)
+             * Register each number with value of how much
+             * Write to file for plotting:
+             *
+             * Example:
+             * Energy:  Number of:
+             * -800     2349
+             * -792     423
+             * ...
+             */
+            vec energyStateValues = zeros<mat>(1000);
+            for(int i = 0; i < 1000; i++)
+            {
+                for(int j = 0; j < mcCycles; j++)
+                {
+                    if(energyState[j] == i-900) energyStateValues[i]++;
+                }
+            }
 
             if(my_rank == 0)
             {
                 writeToFile(nSpins, mcCycles, temp, totalExpectationValues, CvError, XError, newAcceptedFlips);
                 cout << "Accepted flips: " << newAcceptedFlips << endl;
+
+                //cout << "Energy states:\n";
+
+                ofile_prob.open("Probability.txt");
+                ofile_prob << setiosflags(ios::showpoint | ios::uppercase);
+                ofile_prob << setw(15) << "Energy: " << setw(20) << "Number of values:" << endl;
+                for(int i = 0; i < 1000; i += 4)
+                {
+                    //cout << i-900 << "\t" << energyStateValues[i] / mcCycles << endl;
+                    //ofile_prob << setw(15) << i-900 << setw(20) << setprecision(6) << energyStateValues[i] / mcCycles << endl;
+                }
+                ofile_prob << energyState;
+                ofile_prob.close();
             }
         }
     }
@@ -187,8 +233,9 @@ void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magn
             if(spinState == -1) spinMatrix(x,y) = -1.0; // All spins are down
             if(spinState == 0) // Random spin directions
             {
-                if(rand(gen) < 0.5) spinMatrix(x,y) = -1.0;
-                if(rand(gen) >= 0.5) spinMatrix(x,y) = 1.0;
+                double random = rand(gen);
+                if(random < 0.5) spinMatrix(x,y) = -1.0;
+                if(random >= 0.5) spinMatrix(x,y) = 1.0;
             }
         }
     }
