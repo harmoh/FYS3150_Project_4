@@ -105,7 +105,6 @@ int main(int argc, char *argv[])
             }
             int energyStates = mcCycles;
             vec energyState = zeros<mat>(energyStates);
-            vec totalEnergyState = zeros<mat>(energyStates);
 
             vec expectationValues = zeros<mat>(6);
             vec totalExpectationValues = zeros<mat>(6);
@@ -121,12 +120,12 @@ int main(int argc, char *argv[])
                 energyDifference(dE + 8) = exp(-dE/temp);
             }
 
-            int i = 0;
             for(double cycles = myloopBegin; cycles <= myloopEnd; cycles++)
             {
                 metropolis(nSpins, spinMatrix, energy, magneticMoment, acceptedFlips, energyDifference);
 
-                energyState[cycles] = energy;
+                //cout << "cycles: " << cycles << endl;
+                energyState[cycles-1] = energy;
 
                 expectationValues(0) += energy;
                 expectationValues(1) += energy * energy;
@@ -142,13 +141,8 @@ int main(int argc, char *argv[])
                 MPI_Reduce(&expectationValues[i], &totalExpectationValues[i], 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
             }
             MPI_Reduce(&acceptedFlips, &newAcceptedFlips, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-            for(int i = 0; i < energyStates; i++)
-            {
-                MPI_Reduce(&energyState[i], &totalEnergyState[i], 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-            }
 
             newAcceptedFlips /= mcCycles;
-            totalEnergyState /= mcCycles;
 
             /*
              * Search through energyState[i]
@@ -176,16 +170,9 @@ int main(int argc, char *argv[])
                 writeToFile(nSpins, mcCycles, temp, totalExpectationValues, CvError, XError, newAcceptedFlips);
                 cout << "Accepted flips: " << newAcceptedFlips << endl;
 
-                //cout << "Energy states:\n";
-
                 ofile_prob.open("Probability.txt");
                 ofile_prob << setiosflags(ios::showpoint | ios::uppercase);
                 ofile_prob << setw(15) << "Energy: " << setw(20) << "Number of values:" << endl;
-                for(int i = 0; i < 1000; i += 4)
-                {
-                    //cout << i-900 << "\t" << energyStateValues[i] / mcCycles << endl;
-                    //ofile_prob << setw(15) << i-900 << setw(20) << setprecision(6) << energyStateValues[i] / mcCycles << endl;
-                }
                 ofile_prob << energyState;
                 ofile_prob.close();
             }
@@ -198,17 +185,16 @@ int main(int argc, char *argv[])
     //cout << "Cv error: " << CvError << endl;
     //cout << "X error: " << XError << endl;
 
-    ofile.close();
-
     double timeEnd = MPI_Wtime();
     double totalTime = timeEnd - timeStart;
     if (my_rank == 0)
     {
+        ofile.close();
         cout << "Time = " <<  totalTime  << " seconds on number of processors: "  << numprocs  << endl;
     }
 
     // End MPI
-    MPI_Finalize ();
+    MPI_Finalize();
 
     return 0;
 }
