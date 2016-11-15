@@ -16,24 +16,20 @@ def read(filename):
     for line in lines:
         words = line.split()
         x0.append(float(words[0])) # Energy
-        #x1.append(float(words[1])) # Number of values
     infile.close()
-    return x0#, x1
+    return x0
 
-run = 'mpirun -n 4 ./main.o 20 10000 1.0 1.0 0.1 1';
+run = 'mpirun -n 1 ./main.o 20 10000000 1.0 1.0 0.1 1';
 os.system(run) # Argument for number of spins, MC cycles, initial and final temperature, tempurate step and number of loops.
 
 # Fetching data by a call on read_x_u_v for three different n:
 x0 = read('Probability.txt')
 
 plt.xlabel('Energy')
-plt.ylabel('Number of values')
+plt.ylabel('Number of values (normalized)')
 plt.rcParams.update({'font.size': 10})
-axes = plt.gca()
-axes.set_xlim([-850, 50])
-#axes.set_ylim([0, 0.3])
-plt.hist([x0], width = 1, linewidth = 0.1, label = '# Number of values')
+plt.hist([x0], normed = 1, label = '$T = 1.0$') # Change to correct temperature
 plt.legend(loc='upper right',fancybox='True')
 plt.grid()
-plt.savefig('Lattice20x20_prob_.eps', format = 'eps', dpi = 1000, bbox_inches='tight')
+plt.savefig('Lattice20x20_prob_t1.0_1e7_.eps', format = 'eps', dpi = 1000, bbox_inches='tight') # Change to appropriate name
 #plt.show();
