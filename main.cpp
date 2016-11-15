@@ -85,9 +85,17 @@ int main(int argc, char *argv[])
     fileout.append("_MPI.txt");
     ofile.open(fileout);
     ofile << setiosflags(ios::showpoint | ios::uppercase);
-    ofile << setw(15) << "MC cycles:" << setw(15) << "Temperature:" << setw(15) << "Energy:" <<
-             setw(15) << "Cv:" << setw(15) << "Magnetization:" << setw(15) << "Chi (X):" <<
-             setw(15) << "|Magnetization|:" << setw(15) << "# Flips:" << endl;
+    ofile << setw(15) << "MC cycles:" << setw(15) << "Temperature:" << setw(15) << "<E>:" <<
+             setw(15) << "Cv:" << setw(15) << "<M>:" << setw(15) << "Chi (X):" <<
+             setw(15) << "<|M|>:" << setw(15) << "# Flips:" << endl;
+
+    // Open file for phase transition
+    string fileout_phase = "Phase";
+    fileout_phase.append(to_strig(nSpins) + ".txt");
+    ofile_phase.open(fileout_phase);
+    ofile << setiosflags(ios::showpoint | ios::uppercase);
+    ofile << setw(15) << "MC cycles:" << setw(15) << "Temp:" << setw(15) << "<E>:" <<
+             setw(15) << "<|M|>:" << setw(15) << "Cv:" << setw(15) << "Chi (X):" << endl;
 
     double timeStart = MPI_Wtime();
     double CvError, XError;
@@ -210,7 +218,7 @@ void initializeLattice(int nSpins, mat &spinMatrix, double &energy, double &magn
     uniform_real_distribution<double> rand(0.0, 1.0);
 
     // Spin state sets the ground state of the spins, 1 is all up, -1 is all down and 0 is random
-    int spinState = 0;
+    int spinState = 1;
 
     // Set ground state of the lattice
     for(int y = 0; y < nSpins; y++)
@@ -322,4 +330,12 @@ void writeToFile(int nSpins, double mcCycles, double temp, vec expectationValues
     ofile << setw(15) << setprecision(8) << expectVal_X;
     ofile << setw(15) << setprecision(8) << expectVal_Mabs * normSpins;
     ofile << setw(15) << setprecision(8) << acceptedFlips << endl;
+
+    // File for plotting phase transition
+    ofile_phase << setw(15) << setprecision(8)  << mcCycles;
+    ofile_phase << setw(15) << setprecision(8)  << temp;
+    ofile_phase << setw(15) << setprecision(8)  << expectVal_E * normSpins;
+    ofile_phase << setw(15) << setprecision(8)  << expectVal_Mabs * normSpins;
+    ofile_phase << setw(15) << setprecision(8)  << expectVal_Cv * normSpins;
+    ofile_phase << setw(15) << setprecision(8)  << expectVal_X * normSpins << endl;
 }

@@ -19,7 +19,7 @@ def read(filename):
     infile.close()
     return x0
 
-run = 'mpirun -n 1 ./main.o 20 10000000 1.0 1.0 0.1 1';
+run = 'mpirun -n 1 ./main.o 20 10000000 2.4 2.4 0.1 1';
 os.system(run) # Argument for number of spins, MC cycles, initial and final temperature, tempurate step and number of loops.
 
 # Fetching data by a call on read_x_u_v for three different n:
@@ -28,8 +28,8 @@ x0 = read('Probability.txt')
 plt.xlabel('Energy')
 plt.ylabel('Number of values (normalized)')
 plt.rcParams.update({'font.size': 10})
-plt.hist([x0], normed = 1, label = '$T = 1.0$') # Change to correct temperature
+plt.hist([x0], normed = 1, bins = 100, label = '$T = 2.4$') # Change to correct temperature
 plt.legend(loc='upper right',fancybox='True')
 plt.grid()
-plt.savefig('Lattice20x20_prob_t1.0_1e7_.eps', format = 'eps', dpi = 1000, bbox_inches='tight') # Change to appropriate name
+plt.savefig('Lattice20x20_prob_t2.4_1e7_.eps', format = 'eps', dpi = 1000, bbox_inches='tight') # Change to appropriate name
 #plt.show();
