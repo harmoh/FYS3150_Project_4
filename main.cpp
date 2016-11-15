@@ -91,11 +91,11 @@ int main(int argc, char *argv[])
 
     // Open file for phase transition
     string fileout_phase = "Phase";
-    fileout_phase.append(to_strig(nSpins) + ".txt");
+    fileout_phase.append(to_string(nSpins) + ".txt");
     ofile_phase.open(fileout_phase);
-    ofile << setiosflags(ios::showpoint | ios::uppercase);
-    ofile << setw(15) << "MC cycles:" << setw(15) << "Temp:" << setw(15) << "<E>:" <<
-             setw(15) << "<|M|>:" << setw(15) << "Cv:" << setw(15) << "Chi (X):" << endl;
+    ofile_phase << setiosflags(ios::showpoint | ios::uppercase);
+    ofile_phase << setw(15) << "MC cycles:" << setw(15) << "Temp:" << setw(15) << "<E>:" <<
+                   setw(15) << "<|M|>:" << setw(15) << "Cv:" << setw(15) << "Chi (X):" << endl;
 
     double timeStart = MPI_Wtime();
     double CvError, XError;
@@ -336,6 +336,6 @@ void writeToFile(int nSpins, double mcCycles, double temp, vec expectationValues
     ofile_phase << setw(15) << setprecision(8)  << temp;
     ofile_phase << setw(15) << setprecision(8)  << expectVal_E * normSpins;
     ofile_phase << setw(15) << setprecision(8)  << expectVal_Mabs * normSpins;
-    ofile_phase << setw(15) << setprecision(8)  << expectVal_Cv * normSpins;
-    ofile_phase << setw(15) << setprecision(8)  << expectVal_X * normSpins << endl;
+    ofile_phase << setw(15) << setprecision(8)  << expectVal_Cv;
+    ofile_phase << setw(15) << setprecision(8)  << expectVal_X << endl;
 }
