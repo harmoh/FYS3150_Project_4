@@ -1,0 +1,2 @@
+   Temperature:        Energy:            Cv: Magnetization:       Chi (X):|Magnetization|:
+      1.0000000     -1.9959815    0.032080090 -0.00072137100   0.0040113606     0.99866053
