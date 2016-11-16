@@ -5,8 +5,6 @@ from math import *
 import numpy as np
 from matplotlib import pyplot as plt
 
-plt1, plt2 = plt.subplots();
-
 os.system('mpic++ main.cpp -o main.o -O3 -I /usr/local/Cellar/armadillo/7.400.2/include -DARMA_DONT_USE_WRAPPER -lblas -llapack')
 
 def read(filename):
@@ -28,10 +26,10 @@ def read(filename):
 
 x40_1 = []; x40_2 = []; x40_3 = []; x40_4 = []; x40_5 = []; x60_1 = []; x60_2 = []; x60_3 = []; x60_4 = []; x60_5 = []; x100_1 = []; x100_2 = []; x100_3 = []; x100_4 = []; x100_5 = []; x140_1 = []; x140_2 = []; x140_3 = []; x140_4 = []; x140_5 = [];
 
-mcCyclesExponential = 5 # Written as the exponential
+mcCyclesExponential = 6 # Written as the exponential
 mcCycles = 10**mcCyclesExponential;
-temp_init = 2.25;
-temp_final = 2.3;
+temp_init = 2.18;
+temp_final = 2.32;
 temp_step = 0.01;
 
 # Argument for number of spins, MC cycles, initial and final temperature, tempurate step and number of loops.

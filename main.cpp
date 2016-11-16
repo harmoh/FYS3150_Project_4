@@ -53,6 +53,7 @@ int main(int argc, char *argv[])
     if(my_rank == 0)
     {
         cout << "MC cycles: " << mcCycles << endl;
+        cout << "Lattice size L = " << nSpins << endl;
     }
 
     /*
@@ -151,31 +152,10 @@ int main(int argc, char *argv[])
 
             newAcceptedFlips /= mcCycles;
 
-            /*
-             * Search through energyState[i]
-             * Check how many of each (-1000, -999, -998, etc.) (from -1000 to 0)
-             * Register each number with value of how much
-             * Write to file for plotting:
-             *
-             * Example:
-             * Energy:  Number of:
-             * -800     2349
-             * -792     423
-             * ...
-             *
-            vec energyStateValues = zeros<mat>(1000);
-            for(int i = 0; i < 1000; i++)
-            {
-                for(int j = 0; j < mcCycles; j++)
-                {
-                    if(energyState[j] == i-900) energyStateValues[i]++;
-                }
-            }*/
-
             if(my_rank == 0)
             {
                 writeToFile(nSpins, mcCycles, temp, totalExpectationValues, CvError, XError, newAcceptedFlips);
-                cout << "Accepted flips: " << newAcceptedFlips << endl;
+                //cout << "Accepted flips: " << newAcceptedFlips << endl;
 
                 ofile_prob.open("Probability.txt");
                 ofile_prob << setiosflags(ios::showpoint | ios::uppercase);
